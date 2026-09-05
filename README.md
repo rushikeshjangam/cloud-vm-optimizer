@@ -60,6 +60,10 @@ For the single-EC2 path, see [AWS deployment](docs/08-aws-deployment.md) and
 For reproducible Terraform + GitHub Actions deployment into a fresh student
 account, see [Automated AWS handover](docs/11-automated-aws-handover.md).
 
+For the complete new-team setup, viva presentation, question bank,
+troubleshooting, and cleanup instructions, start with the
+[Viva and fresh-account guide](viva-guide/README.md).
+
 ## Safety and cost controls
 
 - One small EC2 host; no RDS, NAT Gateway, load balancer, EKS, or SageMaker.
