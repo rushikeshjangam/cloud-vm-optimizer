@@ -1,14 +1,14 @@
 # Handover Guide for Ayush and Team
 
-This page is the operational checklist. Replace bracketed placeholders only
-after Milestone B deployment.
+This page is the operational checklist for the deployed demo environment.
 
 ## Details to record after deployment
 
-- Application URL: `http://[EC2-PUBLIC-IP]:8501`
-- AWS region: `[for example, ap-south-1]`
-- EC2 instance ID/name: `[record one tagged demo host]`
-- Repository URL: `[GitHub URL]`
+- Application URL: `http://13.201.225.52:8501`
+- AWS region: `ap-south-1`
+- EC2 instance ID: `i-08ac723fd5f598d75`
+- Repository URL: `https://github.com/rushikeshjangam/cloud-vm-optimizer`
+- AWS account: `363434190963`
 
 Never put an AWS password, access key, secret key, or token in this file.
 
@@ -36,7 +36,7 @@ Do not choose **Terminate** during ordinary operation.
 
 ## If the application is down
 
-Connect using EC2 Instance Connect or SSH and run:
+Use AWS Systems Manager Run Command or Session Manager and run:
 
 ```bash
 sudo systemctl status cloud-vm-optimizer
@@ -44,9 +44,17 @@ sudo systemctl restart cloud-vm-optimizer
 sudo journalctl -u cloud-vm-optimizer -n 100 --no-pager
 ```
 
-Confirm the instance security group permits inbound TCP 8501 only from the
-required source range. Confirm the public IP has not changed after a stop/start.
+The Terraform security group permits inbound TCP 8501 and deliberately does not
+open SSH. Confirm the public IP has not changed after a stop/start.
 Application logs are in the systemd journal shown above.
+
+## Redeploying
+
+Pushes to `main` are configured to deploy through GitHub Actions using OIDC,
+S3, and Systems Manager. If GitHub reports `startup_failure` before creating any
+job, resolve the repository/account Actions restriction first. Until then, an
+account owner with an active AWS CLI login can run `scripts/deploy_aws.sh` with
+the instance ID and artifact bucket environment variables.
 
 If AWS or the network is unavailable during the viva, run the same repository
 on a prepared laptop and open `http://localhost:8501`; the core demo needs no AWS API.
@@ -57,7 +65,8 @@ on a prepared laptop and open `http://localhost:8501`; the core demo needs no AW
 - Keep only one small, budget-approved host and its small root EBS volume.
 - Review AWS Billing and Cost Explorer after deployment.
 - Do not add NAT Gateway, load balancer, RDS, EKS, SageMaker, or extra instances.
-- Set a billing budget/alarm in the console before the first long-running demo.
+- A USD 15 monthly AWS Budget is configured. Email notification is intentionally
+  omitted for now and should be added during team handover.
 
 ## Complete cleanup after grading
 
@@ -71,4 +80,3 @@ Only the account owner should do this after backing up the repository and result
 6. Check Billing/Cost Explorer again the following day.
 
 These cleanup steps are manual by design; the application contains no terminate action.
-

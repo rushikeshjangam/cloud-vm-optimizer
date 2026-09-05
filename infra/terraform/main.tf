@@ -162,6 +162,7 @@ resource "aws_instance" "app" {
   vpc_security_group_ids      = [aws_security_group.app.id]
   iam_instance_profile        = aws_iam_instance_profile.app.name
   user_data                   = file("${path.module}/user_data.sh")
+  user_data_replace_on_change = true
 
   metadata_options {
     http_endpoint = "enabled"
