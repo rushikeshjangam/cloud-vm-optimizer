@@ -1,0 +1,18 @@
+[Unit]
+Description=Cloud VM Optimizer Streamlit Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/cloud-vm-optimizer
+Environment=AWS_DEMO_ENABLED=false
+Environment=AWS_REGION=ap-south-1
+ExecStart=/opt/cloud-vm-optimizer/.venv/bin/streamlit run /opt/cloud-vm-optimizer/streamlit_app.py --server.address 0.0.0.0 --server.port 8501
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

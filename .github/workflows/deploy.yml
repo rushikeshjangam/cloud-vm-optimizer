@@ -1,0 +1,81 @@
+name: Deploy to AWS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "data/**"
+      - "deployment/**"
+      - "streamlit_app.py"
+      - "pyproject.toml"
+      - "requirements.txt"
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Build and upload application bundle
+        shell: bash
+        run: |
+          zip -qr cloud-vm-optimizer.zip \
+            src data deployment docs scripts \
+            streamlit_app.py pyproject.toml requirements.txt \
+            README.md ARCHITECTURE.md PROJECT_PLAN.md HANDOVER.md
+          aws s3 cp cloud-vm-optimizer.zip \
+            "s3://${{ vars.AWS_ARTIFACT_BUCKET }}/deployments/${GITHUB_SHA}.zip"
+
+      - name: Deploy through Systems Manager
+        id: deploy
+        shell: bash
+        run: |
+          jq -n \
+            --arg bucket "${{ vars.AWS_ARTIFACT_BUCKET }}" \
+            --arg revision "${GITHUB_SHA}" \
+            '{commands: [
+              "set -euo pipefail",
+              "aws s3 cp s3://" + $bucket + "/deployments/" + $revision + ".zip /tmp/cloud-vm-optimizer.zip",
+              "sudo mkdir -p /opt/cloud-vm-optimizer",
+              "sudo unzip -q -o /tmp/cloud-vm-optimizer.zip -d /opt/cloud-vm-optimizer",
+              "sudo chown -R ubuntu:ubuntu /opt/cloud-vm-optimizer",
+              "sudo -u ubuntu bash /opt/cloud-vm-optimizer/deployment/setup_ec2.sh"
+            ]}' > /tmp/commands.json
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "${{ vars.AWS_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${GITHUB_SHA}" \
+            --parameters file:///tmp/commands.json \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=${command_id}" >> "$GITHUB_OUTPUT"
+          aws ssm wait command-executed \
+            --command-id "$command_id" \
+            --instance-id "${{ vars.AWS_INSTANCE_ID }}"
+
+      - name: Show deployment result
+        if: always()
+        run: |
+          aws ssm get-command-invocation \
+            --command-id "${{ steps.deploy.outputs.command_id }}" \
+            --instance-id "${{ vars.AWS_INSTANCE_ID }}" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+            --output json || true
+
