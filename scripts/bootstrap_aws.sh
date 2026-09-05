@@ -16,6 +16,13 @@ ACCOUNT_ID="$($AWS_CLI_PATH sts get-caller-identity \
   --profile "$AWS_PROFILE_NAME" --query Account --output text)"
 STATE_BUCKET="cloud-vm-optimizer-${ACCOUNT_ID}-${AWS_REGION_NAME}-tfstate"
 
+# Terraform 1.9's S3 backend does not understand the newer `aws login`
+# profile format. Export its short-lived credentials only into this process.
+TEMPORARY_CREDENTIAL_EXPORTS="$($AWS_CLI_PATH configure export-credentials \
+  --profile "$AWS_PROFILE_NAME" --format env)"
+eval "$TEMPORARY_CREDENTIAL_EXPORTS"
+unset TEMPORARY_CREDENTIAL_EXPORTS
+
 echo "Using AWS account ${ACCOUNT_ID}, region ${AWS_REGION_NAME}."
 
 if ! $AWS_CLI_PATH s3api head-bucket \
@@ -71,4 +78,3 @@ gh variable set AWS_REGION --repo "$REPOSITORY_SLUG" --body "$AWS_REGION_NAME"
 
 echo "Infrastructure ready: ${APPLICATION_URL}"
 echo "Push to main or run the Deploy to AWS workflow to deploy the application."
-

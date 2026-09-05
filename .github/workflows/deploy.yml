@@ -23,7 +23,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: demo
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +51,7 @@ jobs:
             --arg revision "${GITHUB_SHA}" \
             '{commands: [
               "set -euo pipefail",
+              "cloud-init status --wait",
               "aws s3 cp s3://" + $bucket + "/deployments/" + $revision + ".zip /tmp/cloud-vm-optimizer.zip",
               "sudo mkdir -p /opt/cloud-vm-optimizer",
               "sudo unzip -q -o /tmp/cloud-vm-optimizer.zip -d /opt/cloud-vm-optimizer",
@@ -78,4 +78,3 @@ jobs:
             --instance-id "${{ vars.AWS_INSTANCE_ID }}" \
             --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
             --output json || true
-
